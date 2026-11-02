@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Health Algorithms – Unit II: Core Components</title>
+<meta name="description" content="BSc Digital Health, Semester 3. Study notes and small demos for Unit II: healthcare data, preprocessing, feature selection and engineering.">
+<style>
+:root{--bg:#fbfcfc;--ink:#14272c;--mute:#51666b;--line:#d5e0e3;--soft:#eaf2f4;--acc:#1f6f8b;--key:#fff3cf;--keyline:#d9a62b;--code:#0f2a31;--codeink:#dff1f5}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1b1e;--ink:#e3eef0;--mute:#9db3b8;--line:#27393d;--soft:#16272b;--acc:#6cc0dc;--key:#2b2610;--keyline:#c9962a;--code:#09161a;--codeink:#cfe9ef}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:1rem}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 Georgia,"Times New Roman",serif}
+h1,h2,h3,nav,table,button,label,input,.tag,.lab{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{display:grid;grid-template-columns:15rem minmax(0,1fr);max-width:76rem;margin:0 auto}
+nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:2rem 1.2rem;border-right:1px solid var(--line);font-size:.92rem}
+nav b{display:block;margin-bottom:.8rem}
+nav a{display:block;color:var(--mute);text-decoration:none;padding:.25rem 0}
+nav a:hover,nav a:focus-visible{color:var(--acc)}
+nav a.sub{padding-left:.9rem;font-size:.86rem}
+main{padding:2.5rem 2rem 5rem;max-width:50rem}
+h1{font-size:2.3rem;line-height:1.15;margin:0 0 .5rem}
+h2{font-size:1.6rem;margin:3rem 0 .6rem;padding-top:1.2rem;border-top:2px solid var(--ink)}
+h3{font-size:1.15rem;margin:2rem 0 .4rem;color:var(--acc)}
+.lead{color:var(--mute);font-size:1.05rem}
+.tag{display:inline-block;font-size:.8rem;border:1px solid var(--acc);color:var(--acc);border-radius:4px;padding:.05rem .45rem;margin-left:.4rem;vertical-align:middle}
+.key{background:var(--key);border-left:4px solid var(--keyline);padding:.7rem 1rem;margin:1rem 0;border-radius:0 6px 6px 0}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.92rem;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:.45rem .65rem;text-align:left;vertical-align:top}
+th{background:var(--soft)}
+pre{background:var(--code);color:var(--codeink);padding:1rem;border-radius:6px;overflow-x:auto;font-size:.85rem;line-height:1.5}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9em}
+.lab{border:2px solid var(--acc);border-radius:8px;padding:1rem 1.2rem;margin:1.5rem 0;background:var(--soft)}
+.lab h4{margin:0 0 .6rem;font-size:1rem;color:var(--acc)}
+.lab label{display:block;font-size:.85rem;color:var(--mute);margin:.5rem 0 .2rem}
+.lab input{width:100%;padding:.45rem .6rem;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--ink);font-size:1rem}
+.lab button{margin-top:.7rem;background:var(--acc);color:var(--bg);border:0;border-radius:5px;padding:.5rem 1rem;font-size:.95rem;cursor:pointer}
+.lab button:focus-visible,.lab input:focus-visible{outline:3px solid var(--keyline);outline-offset:2px}
+.out{margin-top:.8rem;font-size:.95rem;font-family:system-ui,sans-serif}
+.out span.bad{background:var(--key);border:1px solid var(--keyline);padding:0 .3rem;border-radius:3px}
+footer{margin-top:4rem;color:var(--mute);font-size:.88rem}
+@media(max-width:52rem){.wrap{display:block}nav{position:static;height:auto;border:0;border-bottom:1px solid var(--line)}main{padding:1.5rem 1.1rem 4rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Contents">
+<b>Unit II contents</b>
+<a href="#collect">2.1 Data collection and types</a>
+<a class="sub" href="#sources">Sources and methods</a>
+<a class="sub" href="#types">Data types</a>
+<a class="sub" href="#quality">Quality, standards, privacy</a>
+<a class="sub" href="#fhir">In depth: FHIR and bias</a>
+<a href="#prep">2.2 Data preprocessing</a>
+<a class="sub" href="#missing">Missing values</a>
+<a class="sub" href="#outliers">Outliers</a>
+<a class="sub" href="#scaling">Scaling and encoding</a>
+<a class="sub" href="#integration">Integration</a>
+<a class="sub" href="#modal">In depth: signals, text, images</a>
+<a href="#feat">2.3 Features</a>
+<a class="sub" href="#select">Selection</a>
+<a class="sub" href="#engineer">Engineering</a>
+<a class="sub" href="#leak">Leakage</a>
+<a class="sub" href="#deep">In depth: correlation, PCA</a>
+<a href="#glossary">Quick revision</a>
+</nav>
+<main>
+<h1>Core Components of Health Algorithms</h1>
+<p class="lead">Unit II · BSc Digital Health, Semester 3. An algorithm is only as good as its data. This unit covers where health data comes from, how it is cleaned, and which variables (features) the algorithm should use. Boxes marked <span class="tag">In depth</span> go beyond the syllabus. The shaded labs run in your browser.</p>
+
+<h2 id="collect">2.1 Data collection and healthcare data types</h2>
+<h3 id="sources">Sources and methods of collection</h3>
+<table><tr><th>Source</th><th>What it holds</th></tr>
+<tr><td>EHR / EMR</td><td>Diagnoses, medicines, vitals, notes, history</td></tr>
+<tr><td>Laboratory information system (LIS)</td><td>Lab test orders and results</td></tr>
+<tr><td>PACS</td><td>Stored images (X-ray, CT, MRI)</td></tr>
+<tr><td>Wearables and sensors</td><td>Heart rate, steps, sleep, glucose, SpO₂</td></tr>
+<tr><td>Surveys and apps</td><td>Symptoms, lifestyle, patient-reported outcomes</td></tr>
+<tr><td>Insurance claims</td><td>Procedures, visits, costs</td></tr>
+<tr><td>Registries and public health systems</td><td>Disease cases, vaccination, population data</td></tr></table>
+<p><b>Methods:</b> manual entry by staff, automatic capture from devices, electronic transfer between systems using standards, and patient-filled forms or apps.</p>
+
+<h3 id="types">Types of healthcare data</h3>
+<table><tr><th>Type</th><th>Form</th><th>Examples</th></tr>
+<tr><td>Structured</td><td>Rows and columns, fixed fields</td><td>Age, vitals, lab values, diagnosis codes</td></tr>
+<tr><td>Unstructured</td><td>Free text</td><td>Doctor's notes, discharge summaries</td></tr>
+<tr><td>Imaging</td><td>Pixels, stored as DICOM</td><td>X-ray, CT, MRI, ultrasound</td></tr>
+<tr><td>Time-series / signals</td><td>Values over time</td><td>ECG, EEG, ICU monitor, glucose monitor</td></tr>
+<tr><td>Genomic</td><td>Gene and molecular data</td><td>DNA sequencing results</td></tr></table>
+
+<h3 id="quality">Data quality, standards and privacy</h3>
+<p>Good data is <b>accurate</b>, <b>complete</b>, <b>consistent</b>, <b>timely</b> and <b>valid</b>. Poor data causes wrong results ("garbage in, garbage out"), unsafe decisions (5.5 mmol/L typed as 5.5 mg/dL looks dangerously low), hidden bias and loss of clinician trust.</p>
+<table><tr><th>Standard</th><th>Purpose</th></tr>
+<tr><td>HL7, FHIR</td><td>Exchanging health data between systems</td></tr>
+<tr><td>DICOM</td><td>Format for medical images</td></tr>
+<tr><td>ICD</td><td>Codes for diseases and diagnoses</td></tr>
+<tr><td>SNOMED CT</td><td>Detailed clinical terms</td></tr>
+<tr><td>LOINC</td><td>Codes for lab tests and observations</td></tr></table>
+<p><b>Privacy:</b> take patient consent, store data securely, allow access only to those who need it, and anonymise (remove names and identifiers). In India, the Digital Personal Data Protection Act, 2023 and the Ayushman Bharat Digital Mission (ABDM) framework guide how health data is handled.</p>
+
+<h3 id="fhir">In depth: what a FHIR record looks like, and sampling bias <span class="tag">In depth</span></h3>
+<p>FHIR stores each fact as a small structured "resource". A heart-rate reading is an <code>Observation</code> that points to a <code>Patient</code> and carries a standard code, so every system reads it the same way.</p>
+<pre>{
+  "resourceType": "Observation",
+  "status": "final",
+  "code": { "coding": [{ "system": "http://loinc.org",
+            "code": "8867-4", "display": "Heart rate" }] },
+  "subject": { "reference": "Patient/123" },
+  "valueQuantity": { "value": 78, "unit": "beats/minute" }
+}</pre>
+<p>Data also carries <b>sampling bias</b>. Wearable data comes only from people who can afford a device, and a tertiary-hospital EHR holds sicker patients than the general population. An algorithm trained on such data may work poorly on people who were missing from it. Always ask: <i>who is not in this dataset?</i></p>
+
+<h2 id="prep">2.2 Data preprocessing</h2>
+<p>Raw health data has duplicates, errors, gaps, mixed units and mixed formats. <b>Data preprocessing</b> cleans and prepares it so an algorithm can use it. Standard order: remove duplicates, fix errors, handle missing values, check outliers, make units and formats uniform, encode categories, scale numbers.</p>
+
+<h3 id="missing">Missing values</h3>
+<p>Options: <b>delete</b> the record (simple, but loses data); <b>impute</b> (fill in) with the <b>mean</b> for evenly spread numbers, the <b>median</b> when there are extreme values, or the <b>mode</b> for categories; carry the previous reading forward for time-series; predict the value with a model; or add a "was missing" flag. In healthcare a gap can mean something: a test not ordered may mean the doctor was not worried.</p>
+<p>Example: BP readings 120, 130, missing, 140. Mean of known values = 390 ÷ 3 = 130. Length of stay 2, 3, 3, 4, 30 days: mean = 8.4, median = 3, so the median describes a typical patient better.</p>
+<div class="lab"><h4>Lab 1: impute a missing value</h4>
+<label for="l1">Values separated by commas. Write ? for a missing value.</label>
+<input id="l1" value="2, 3, ?, 4, 30">
+<button onclick="lab1()">Calculate</button><div class="out" id="o1" aria-live="polite"></div></div>
+<h3>In depth: why values go missing <span class="tag">In depth</span></h3>
+<table><tr><th>Pattern</th><th>Meaning</th><th>Example</th></tr>
+<tr><td>Missing completely at random (MCAR)</td><td>Gap unrelated to anything</td><td>Device battery died</td></tr>
+<tr><td>Missing at random (MAR)</td><td>Gap depends on another recorded value</td><td>Older patients skip the online survey</td></tr>
+<tr><td>Missing not at random (MNAR)</td><td>Gap depends on the missing value itself</td><td>Very ill patients too unwell to give a reading</td></tr></table>
+<p>Simple mean filling is safest under MCAR. Under MAR and MNAR it can bias results, so better methods are used: filling from the most similar patients (k-nearest neighbours) or repeated model-based filling (multiple imputation). Whichever you use, keep a "was missing" flag.</p>
+
+<h3 id="outliers">Outliers</h3>
+<p>An <b>outlier</b> is a value far from the rest. First decide whether it is an <b>error</b> (age 150: correct or remove) or a <b>real extreme</b> (a critically ill patient: keep). Never delete blindly: sicker patients have more extreme values, so deleting them makes the data look healthier than reality.</p>
+<p><b>In depth: the IQR rule</b> <span class="tag">In depth</span> Sort the values; Q1 is the median of the lower half, Q3 the median of the upper half, IQR = Q3 − Q1. A value below Q1 − 1.5×IQR or above Q3 + 1.5×IQR is flagged. Example heart rates 60, 64, 68, 70, 72, 74, 76, 78, 80, 200: Q1 = 68, Q3 = 78, IQR = 10, fences 53 and 93, so 200 is flagged. Flagging only means "look at this"; a clinician decides.</p>
+
+<h3 id="scaling">Scaling and encoding</h3>
+<p><b>Min-max scaling:</b> (value − min) ÷ (max − min), giving 0 to 1. Ages 20 to 80, age 50 → 30 ÷ 60 = 0.5. <b>Standardisation (z-score):</b> (value − mean) ÷ standard deviation. Mean 100, SD 20, value 140 → z = 2.</p>
+<p><b>Encoding:</b> <i>label encoding</i> gives each category a number (Male = 0, Female = 1) and suits categories with a real order; <i>one-hot encoding</i> makes a 0/1 column per category (blood groups A, B, O, AB become four columns) so the algorithm does not think AB is "bigger" than A.</p>
+<p><b>In depth:</b> <span class="tag">In depth</span> Skewed values such as length of stay are often log-transformed first. Fit the scaler on the <b>training data only</b>, then apply it to test data; using the whole dataset leaks test information into training.</p>
+<div class="lab"><h4>Lab 2: scale values and flag outliers</h4>
+<label for="l2">Numbers separated by commas (at least 4)</label>
+<input id="l2" value="60, 64, 68, 70, 72, 74, 76, 78, 80, 200">
+<button onclick="lab2()">Analyse</button><div class="out" id="o2" aria-live="polite"></div></div>
+
+<h3 id="integration">Integration and standardisation</h3>
+<p>When data comes from several systems, make units, codes and date formats the same. Glucose: mmol/L × about 18 = mg/dL (6.0 mmol/L ≈ 108 mg/dL). Use standard codes (ICD, LOINC, SNOMED CT) so the same test or disease has one name everywhere. Merge records of the same patient and remove duplicates.</p>
+<div class="lab"><h4>Lab 3: BMI, glucose units and one-hot encoding</h4>
+<label for="w">Weight (kg)</label><input id="w" value="72" inputmode="decimal">
+<label for="h">Height (m)</label><input id="h" value="1.80" inputmode="decimal">
+<label for="g">Glucose (mmol/L)</label><input id="g" value="6.0" inputmode="decimal">
+<label for="c">Categories, comma separated</label><input id="c" value="A, B, O, AB">
+<button onclick="lab3()">Calculate</button><div class="out" id="o3" aria-live="polite"></div></div>
+
+<h3 id="modal">In depth: preprocessing signals, text and images <span class="tag">In depth</span></h3>
+<table><tr><th>Data</th><th>Typical preprocessing</th></tr>
+<tr><td>Signals (ECG, EEG)</td><td>Filter noise and baseline drift, resample to a fixed rate, cut into fixed-length windows</td></tr>
+<tr><td>Clinical text</td><td>Split into words, expand abbreviations, detect negation ("no chest pain" is not chest pain), map terms to SNOMED CT</td></tr>
+<tr><td>Images (DICOM)</td><td>Resize, normalise pixel values, adjust window and level, remove patient identifiers from the header</td></tr></table>
+
+<h2 id="feat">2.3 Feature selection and feature engineering</h2>
+<p>A <b>feature</b> is one input variable (age, blood pressure, HbA1c). The outcome to predict is the <b>target</b> or <b>label</b>. Features are <i>numerical</i> (weight) or <i>categorical</i> (blood group).</p>
+<h3 id="select">Feature selection</h3>
+<p>Choosing the useful features and leaving out the rest. It removes noise, speeds up the model, reduces overfitting (learning the data by heart) and makes the result easier to explain.</p>
+<table><tr><th>Method</th><th>Idea</th></tr>
+<tr><td>Filter</td><td>Score each feature by its link with the outcome (for example correlation) and keep the best</td></tr>
+<tr><td>Wrapper</td><td>Try different groups of features and keep the group that works best</td></tr>
+<tr><td>Embedded</td><td>The algorithm picks features while learning (for example a decision tree)</td></tr>
+<tr><td>Expert knowledge</td><td>Doctors say which variables matter clinically; always used</td></tr></table>
+<p><b>Multicollinearity:</b> two features carrying nearly the same information (weight and BMI). Keep the more useful one.</p>
+
+<h3 id="engineer">Feature engineering</h3>
+<p>Creating new, more useful features from raw data: <b>calculation</b> (BMI = kg ÷ m²; pulse pressure = systolic − diastolic), <b>grouping</b> (age group, BMI category), <b>counting</b> (visits in the last year), <b>time</b> (average heart rate over 24 hours, days since last admission) and <b>text</b> (note says "chest pain" → yes/no column).</p>
+
+<h3 id="leak">Data leakage</h3>
+<div class="key"><b>Data leakage</b> means using a feature that would not be known at the time of prediction. Example: using the discharge diagnosis to predict admission. The model looks excellent in testing and fails in real use. Ask: <i>would I know this value when the prediction is made?</i></div>
+
+<h3>Worked example</h3>
+<p>Predict diabetes from: age, height, weight, fasting glucose, HbA1c, patient ID, phone number, address. <b>Drop</b> ID, phone and address (no medical value). <b>Create</b> BMI from height and weight. <b>Final features:</b> age, BMI, fasting glucose, HbA1c.</p>
+
+<h3 id="deep">In depth: correlation, elimination and PCA <span class="tag">In depth</span></h3>
+<p><b>Correlation (r)</b> runs from −1 to +1. Near +1: both rise together; near −1: one rises as the other falls; near 0: no straight-line link. Correlation is not causation: ice-cream sales and drowning both rise in summer. <b>Recursive feature elimination</b> trains a model, drops the weakest feature, and repeats. <b>L1 (lasso) regularisation</b> is an embedded method that shrinks unhelpful feature weights to zero. <b>PCA</b> combines many correlated features into a few new ones; it reduces size but the new features are harder to explain to a clinician. The <b>curse of dimensionality</b> means that with many features and few patients, a model finds false patterns; select features before adding more.</p>
+
+<h2 id="glossary">Quick revision</h2>
+<ul>
+<li>Sources: EHR, LIS, PACS, wearables, surveys, claims, registries. Types: structured, unstructured, imaging, time-series, genomic.</li>
+<li>Quality: accurate, complete, consistent, timely, valid. Standards: HL7, FHIR, DICOM, ICD, SNOMED CT, LOINC.</li>
+<li>Preprocessing: clean, handle missing values, check outliers, standardise, encode, scale.</li>
+<li>Mean for even data, median with extremes, mode for categories. Min-max = (x − min) ÷ (max − min); z = (x − mean) ÷ SD.</li>
+<li>Selection chooses features, engineering creates them. Avoid leakage and multicollinearity.</li>
+</ul>
+<footer>Study notes for Unit II, Health Algorithms. For learning only; clinical decisions need qualified clinicians.</footer>
+</main>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const med=a=>{const s=[...a].sort((x,y)=>x-y),n=s.length;return n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2};
+const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+const r=x=>Math.round(x*100)/100;
+function nums(t){return t.split(',').map(s=>s.trim()).filter(s=>s!=='')}
+function lab1(){
+ const raw=nums($('l1').value),known=raw.filter(v=>v!=='?').map(Number);
+ if(!known.length||known.some(isNaN)){$('o1').textContent='Enter numbers, with ? for a missing value.';return}
+ const m=r(mean(known)),d=r(med(known)),miss=raw.length-known.length;
+ $('o1').innerHTML=`Known values: ${known.join(', ')}<br>Mean = <b>${m}</b>, median = <b>${d}</b>, missing values = ${miss}.<br>${miss?`Filled with mean: ${raw.map(v=>v==='?'?m:v).join(', ')}<br>Filled with median: ${raw.map(v=>v==='?'?d:v).join(', ')}<br>`:''}${Math.abs(m-d)>0.25*d?'The mean and median differ a lot, so an extreme value is pulling the mean. The median is safer.':'The mean and median are close, so either is reasonable.'}`}
+function lab2(){
+ const a=nums($('l2').value).map(Number);
+ if(a.length<4||a.some(isNaN)){$('o2').textContent='Enter at least 4 numbers.';return}
+ const s=[...a].sort((x,y)=>x-y),h=Math.floor(s.length/2);
+ const q1=med(s.slice(0,h)),q3=med(s.slice(s.length%2?h+1:h)),iqr=q3-q1,lo=q1-1.5*iqr,hi=q3+1.5*iqr;
+ const mn=Math.min(...a),mx=Math.max(...a),mu=mean(a),sd=Math.sqrt(mean(a.map(x=>(x-mu)**2)));
+ const rows=a.map(x=>{const out=x<lo||x>hi;return `<tr><td>${out?`<span class="bad">${x}</span>`:x}</td><td>${mx>mn?r((x-mn)/(mx-mn)):'-'}</td><td>${sd?r((x-mu)/sd):'-'}</td><td>${out?'check':''}</td></tr>`}).join('');
+ $('o2').innerHTML=`Q1 = ${q1}, Q3 = ${q3}, IQR = ${iqr}, fences = ${r(lo)} to ${r(hi)}. Mean = ${r(mu)}, SD = ${r(sd)}.<table><tr><th>Value</th><th>Min-max</th><th>z-score</th><th>IQR rule</th></tr>${rows}</table>`}
+function lab3(){
+ const w=parseFloat($('w').value),h=parseFloat($('h').value),g=parseFloat($('g').value);
+ const cats=[...new Set(nums($('c').value))];
+ if(!(w>0&&h>0&&g>0)||!cats.length){$('o3').textContent='Enter positive numbers and at least one category.';return}
+ const oh=cats.map((c,i)=>`${c}: ${cats.map((_,j)=>i===j?1:0).join(' ')}`).join('<br>');
+ $('o3').innerHTML=`BMI = ${w} ÷ ${h}² = <b>${r(w/h**2)}</b><br>Glucose = ${g} mmol/L × 18 = <b>${r(g*18)} mg/dL</b> (approximate)<br>One-hot encoding, columns in order ${cats.join(', ')}:<br>${oh}`}
+</script>
+</body>
+</html>
